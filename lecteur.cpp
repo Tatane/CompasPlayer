@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <direct.h>
 
-//#include <SFML/Audio.hpp>
-
 static const char * REPERTOIRE_SONS = "C:\\Users\\monnom\\Dropbox\\Documents\\Musique\\Samples\\";
 
 void Lecteur::lireTemps(Temps *temps)
@@ -63,7 +61,7 @@ void Lecteur::lireSon(Son *son)
     sf::Sound * sound = 0;
     if (mapSonSound.count(son) == 0) {
 
-    //if (son->getSound() == 0) {
+        //if (son->getSound() == 0) {
         int indexSoundBuffer = son->getIndexSoundBuffer();
         if (indexSoundBuffer < vecSoundBuffers.size()) {
             sf::SoundBuffer * soundBuffer = vecSoundBuffers.at(indexSoundBuffer);
@@ -82,6 +80,8 @@ void Lecteur::lireSon(Son *son)
 }
 
 Lecteur::Lecteur()
+    : pattern(0)
+    , mIsPlaying(false)
 {
 
     // Afficher le repertoire de travail (TEMPORAIRE) :
@@ -119,19 +119,27 @@ Lecteur::~Lecteur()
     }
 }
 
-void Lecteur::lirePattern()
+void Lecteur::lire()
 {
     std::cout<<"lire"<<std::endl;
 
-    start();
-
-
-
+    if ( ! isPlaying() ) {
+        start();
+    }
+    else {
+        std::cout<<"Deja en cours de lecture"<<std::endl;
+    }
 }
 
 void Lecteur::arreter()
 {
     std::cout<<"arreter"<<std::endl;
+    isPlaying(false);
+}
+
+Pattern *Lecteur::getPattern() const
+{
+    return pattern;
 }
 
 void Lecteur::setPattern(Pattern * p)
@@ -139,25 +147,30 @@ void Lecteur::setPattern(Pattern * p)
     pattern = p;
 }
 
+bool Lecteur::isPlaying() const
+{
+    return mIsPlaying;
+}
+
+void Lecteur::isPlaying(bool value)
+{
+    mIsPlaying = value;
+}
+
 void Lecteur::run()
 {
-    // Boucle nbTemps
-    // Prendre le temps precis
-    // Faire les actions puor le Temps courant
-    // Attendre que la DureeTemps soit complete,
-    // avant de boucler.
+    isPlaying(true);
 
-    for(int i=0; i<3; i++){
+    while ( isPlaying() ) {
+        for(int iTemps=0; iTemps<pattern->getNbTemps() && isPlaying(); iTemps++) {
 
-        for(int iTemps=0; iTemps<pattern->getNbTemps(); iTemps++) {
+            currentTempsChanged(iTemps);
 
             Temps * temps = pattern->getTemps(iTemps);
 
             lireTemps(temps);
-
-
         }
-
-        std::cout<<std::endl;
     }
+
+    std::cout<<"Thread terminé"<<std::endl;
 }
