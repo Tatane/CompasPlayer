@@ -3,11 +3,14 @@
 
 //#include <SFML/Audio.hpp>
 
+static const int FILERELATIVEPATH_MAXLENGTH = 512;
+
 class Son
 {
     int volume;
-    int indexSoundBuffer;
+    //int indexSoundBuffer;
     //sf::Sound *sound;
+    char fileRelativePath[FILERELATIVEPATH_MAXLENGTH];
 
 public:
     Son();
@@ -16,8 +19,11 @@ public:
     void setVolume(int value);
     //sf::Sound *getSound() const;
     //void setSound(sf::Sound *value);
-    int getIndexSoundBuffer() const;
-    void setIndexSoundBuffer(int value);
+    //int getIndexSoundBuffer() const;
+    //void setIndexSoundBuffer(int value);
+    const char * getFileRelativePath() const;
+    void setFileRelativePath(const char * filePath);
+
 };
 
 #endif // SON_H
