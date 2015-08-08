@@ -38,8 +38,19 @@ bool GestionXML::loadFileIntoPattern(const char *file, Pattern *pattern)
                     while(soundElement) {
                         // TODO il faudrait verifier lexistence de l'Attribut
                         Son * son = new Son;
-                        son->setIndexSoundBuffer(soundElement->IntAttribute("index"));
-                        son->setVolume(soundElement->IntAttribute("volume"));
+                        //son->setIndexSoundBuffer(soundElement->IntAttribute("index"));
+                        tinyxml2::XMLElement * fileElement = soundElement->FirstChildElement("file");
+                        if (fileElement) {
+                            son->setFileRelativePath(fileElement->GetText());
+                        }
+                        //son->setVolume(soundElement->IntAttribute("volume"));
+                        int volume = 0;
+                        tinyxml2::XMLElement * volumeElement = soundElement->FirstChildElement("volume");
+                        if (volumeElement) {
+                            tinyxml2::XMLError err = volumeElement->QueryIntText(&volume);
+                        }
+                        // TODO Gerer erreur
+                        son->setVolume(volume);
                         subTemps->addSon(son);
 
                         soundElement = soundElement->NextSiblingElement();

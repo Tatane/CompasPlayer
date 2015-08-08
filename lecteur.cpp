@@ -4,12 +4,12 @@
 
 #include <iostream>
 #include <ctime>
+#include <cstring>
 
 // Pour getcwd :
 #include <stdio.h>
 #include <direct.h>
 
-static const char * REPERTOIRE_SONS = "C:\\Users\\monnom\\Dropbox\\Documents\\Musique\\Samples\\";
 
 void Lecteur::lireTemps(Temps *temps)
 {
@@ -39,18 +39,15 @@ void Lecteur::lireTemps(Temps *temps)
 
 void Lecteur::lireSubTemps(SubTemps *subTemps)
 {
-    std::cout<<'.';
+    if (subTemps) {
+        std::cout<<'.';
 
-    // Jouer tous les sons de ce SubTemps
-    for(int iSon=0; iSon<subTemps->getNbSons(); iSon++) {
-
-        // Si ce Son a encore son sf::Sound vide, alors il faut l'initialier,
-        // sinon, on utilise le pointeur deja existant.
-        Son * son = subTemps->getSonAt(iSon);
-        if (son) {
-
-            lireSon(son);
-
+        // Jouer tous les sons de ce SubTemps
+        for(int iSon=0; iSon<subTemps->getNbSons(); iSon++) {
+            Son * son = subTemps->getSonAt(iSon);
+            if (son) {
+                lireSon(son);
+            }
         }
     }
 
@@ -58,25 +55,87 @@ void Lecteur::lireSubTemps(SubTemps *subTemps)
 
 void Lecteur::lireSon(Son *son)
 {
-    sf::Sound * sound = 0;
-    if (mapSonSound.count(son) == 0) {
-
-        //if (son->getSound() == 0) {
-        int indexSoundBuffer = son->getIndexSoundBuffer();
-        if (indexSoundBuffer < vecSoundBuffers.size()) {
-            sf::SoundBuffer * soundBuffer = vecSoundBuffers.at(indexSoundBuffer);
-            sound = new sf::Sound(*soundBuffer);
-            sound->setVolume(son->getVolume());
-            //son->setSound(sound);
-            mapSonSound[son] = sound;
-        }
-    }
-    else {
+    if (son && mapSonSound.count(son)>0){
         sound = mapSonSound.at(son);
+        sound->play();
     }
+}
 
-    // Jouer le son :
-    sound->play();
+void Lecteur::chargerSoundBuffersDuPattern()
+{
+    if (pattern) {
+
+        // Decharger l'existant :
+        MapFileSoundBuffer::const_iterator it;
+        for(it = mapFileSoundBuffer.begin(); it != mapFileSoundBuffer.end(); ++it) {
+            sf::SoundBuffer * sb = it->second;
+            delete sb;
+        }
+        mapFileSoundBuffer.clear();
+        std::cout<<"Map de SoundBuffer videe"<<std::endl;
+
+        MapSonSound::const_iterator it2;
+        for(it2 = mapSonSound.begin(); it2 != mapSonSound.end(); ++it2) {
+            sf::Sound * s = it2->second;
+            delete s;
+        }
+        mapSonSound.clear();
+        std::cout<<"Map de Sound videe"<<std::endl;
+
+
+        for(int iTemps=0; iTemps<pattern->getNbTemps(); iTemps++) {
+
+            Temps * temps = pattern->getTemps(iTemps);
+
+            for(int iSubTemps=0; iSubTemps<temps->getNbSubTemps(); iSubTemps++){
+
+                SubTemps* subTemps = temps->getSubTempsAt(iSubTemps);
+
+                for(int iSon=0; iSon<subTemps->getNbSons(); iSon++) {
+
+                    Son * son = subTemps->getSonAt(iSon);
+                    if (son) {
+                        const char * file = son->getFileRelativePath();
+                        sf::SoundBuffer * sb = 0;
+                        // Regarder si ce chemin file est deja present dans la map
+                        // MAis ATTENTION il ne faut pas comparer les char*,
+                        // il faut comparer la valeur des chaines.
+                        MapFileSoundBuffer::const_iterator it;
+                        bool dejaDansMap = false;
+                        for(it = mapFileSoundBuffer.begin(); it != mapFileSoundBuffer.end(); ++it) {
+                            const char * valeur = it->first;
+                            if (std::strcmp(valeur, file) == 0) {
+                                sb = it->second;
+                                dejaDansMap = true;
+                                break;
+                            }
+                        }
+
+                        if ( ! dejaDansMap) {
+                            sb = new sf::SoundBuffer;
+                            char fullFilePath[1024] = "";
+                            std::strcat(fullFilePath, samplesDirectory);
+                            std::strcat(fullFilePath, file);
+                            bool b = sb->loadFromFile(fullFilePath);
+                            if (!b) {
+                                std::cout<<"Erreur chargement fichier sample "<<fullFilePath<<std::endl;
+                            }
+                            else {
+                                mapFileSoundBuffer[file] = sb;
+                            }
+                        }
+
+                        if (sb) {
+                            sf::Sound * sound = new sf::Sound(*sb);
+                            sound->setVolume(son->getVolume());
+                            mapSonSound[son] = sound;
+                        }
+                    }
+                }
+            }
+        }
+
+    }
 }
 
 Lecteur::Lecteur()
@@ -84,11 +143,13 @@ Lecteur::Lecteur()
     , mIsPlaying(false)
 {
 
+    std::strcpy(samplesDirectory, "C:\\Users\\monnom\\Dropbox\\Documents\\Musique\\Samples\\");
+
     // Afficher le repertoire de travail (TEMPORAIRE) :
     char cwd[512];
     _getcwd(cwd, sizeof(cwd));
     std::cout<<"Current directory = "<<cwd<<std::endl;
-
+    /*
     // Charger les sons dans les buffers :
     sf::SoundBuffer * buffer = new sf::SoundBuffer;
     char cheminFichier[512];
@@ -107,16 +168,12 @@ Lecteur::Lecteur()
     } else {
         vecSoundBuffers.push_back(buffer);
     }
+    */
 }
 
 Lecteur::~Lecteur()
 {
-    std::vector<sf::SoundBuffer*>::const_iterator it;
-    for(it = vecSoundBuffers.begin(); it != vecSoundBuffers.end(); it++){
-        sf::SoundBuffer* buffer = *it;
-        delete buffer;
-        buffer = 0;
-    }
+
 }
 
 void Lecteur::lire()
@@ -145,6 +202,8 @@ Pattern *Lecteur::getPattern() const
 void Lecteur::setPattern(Pattern * p)
 {
     pattern = p;
+
+    chargerSoundBuffersDuPattern();
 }
 
 bool Lecteur::isPlaying() const
